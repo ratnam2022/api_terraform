@@ -1,0 +1,71 @@
+name: Build and deploy an app to AKS
+run-name: Python App Deployment in AKS
+
+on:
+  push:
+    branches: ["main"]
+
+jobs:
+  buildImage:
+    name: Build and Push Image
+    runs-on: ubuntu-latest
+    steps:
+      # Checks out the repository
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # Builds and pushes an image up to the Docker Hub
+      - name: Build and push image to Docker Hub
+        env:
+         DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+         DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+         IMAGE_NAME: api_app
+         TAG: ${{ github.sha }}
+        run: |
+          echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+          docker build -t $DOCKERHUB_USERNAME/$IMAGE_NAME:$TAG .
+          docker push $DOCKERHUB_USERNAME/$IMAGE_NAME:$TAG
+  deploy:
+    needs: buildImage
+    name: Deploy App in AKS
+    runs-on: ubuntu-latest
+    steps:
+    # Checks out the Git repository
+    - name: Checkout repository
+      uses: actions/checkout@v3
+    # Log in to Azure using Client Secret
+    - name: Log in to Azure
+      uses: azure/login@v1
+      with:
+        creds: '{"clientId":"${{ secrets.CLIENT_ID }}","clientSecret":"${{ secrets.CLIENT_SECRET }}","subscriptionId":"${{ secrets.SUBSCRIPTION_ID }}","tenantId":"${{ secrets.TENANT_ID }}"}'
+    # Authenticate to AKS
+    - name: Authenticate to AKS
+      env:
+        AKS_CLUSTER_NAME: aks-pythonapp
+        AKS_RG_NAME: rg-aks-dev-uks
+      run: az aks get-credentials --resource-group "$AKS_RG_NAME" --name "$AKS_CLUSTER_NAME"
+    # Deploy App container in AKS
+    - name: Deploy pods to AKS
+      run: |
+        kubectl apply -f ./deployment/deployment.yml
+    # Create or Update service in AKS   
+    - name: Deploy Service to AKS
+      run: |
+        kubectl apply -f ./deployment/service.yml
+  testURL:
+    needs: deploy
+    name: Test Deployed App
+    runs-on: ubuntu-latest
+    steps:
+    # Test the deployed app availability using CURL
+    - name: CURL URL
+      run: |
+        RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" ${{ secrets.EXTERNAL_URL }})
+        if [ $RESPONSE -eq 200 ]; then
+          echo "URL is accessible."
+        else
+          echo "URL is not accessible. Status code: $RESPONSE"
+          exit 1
+        fi
+
+        

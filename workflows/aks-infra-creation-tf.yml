@@ -1,0 +1,40 @@
+name: 'AKS Infra Creation using Terraform'
+run-name: AKS Infra Creation using Terrraform
+on:
+  workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: ./terraform
+
+jobs:
+  terraform:
+    name: 'Terraform'
+    runs-on: ubuntu-latest
+
+    steps:
+    # Checkout the repository
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    # Install the latest version of Terraform CLI
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v1
+
+    # Log in to Azure using Client Secret
+    - name: Log in to Azure
+      uses: azure/login@v1
+      with:
+        creds: '{"clientId":"${{ secrets.CLIENT_ID }}","clientSecret":"${{ secrets.CLIENT_SECRET }}","subscriptionId":"${{ secrets.SUBSCRIPTION_ID }}","tenantId":"${{ secrets.TENANT_ID }}"}'
+
+    # Initialize a new or existing Terraform working directory
+    - name: Terraform Init
+      run: terraform init
+
+    # Generates an execution plan for Terraform
+    - name: Terraform Plan
+      run: terraform plan -input=false
+
+    # Apply the plan to create AKS cluster in Azure
+    - name: Terraform Apply
+      run: terraform apply -auto-approve -input=false
