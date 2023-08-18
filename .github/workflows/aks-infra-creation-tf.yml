@@ -9,7 +9,7 @@ defaults:
 
 jobs:
   terraform:
-    name: 'Terraform'
+    name: 'AKS Creation using Terraform'
     runs-on: ubuntu-latest
 
     steps:
