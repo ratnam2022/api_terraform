@@ -20,11 +20,10 @@ jobs:
          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
          IMAGE_NAME: api_app
-         TAG: ${{ github.sha }}
         run: |
           echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
-          docker build -t $DOCKERHUB_USERNAME/$IMAGE_NAME:$TAG .
-          docker push $DOCKERHUB_USERNAME/$IMAGE_NAME:$TAG
+          docker build -t $DOCKERHUB_USERNAME/$IMAGE_NAME .
+          docker push $DOCKERHUB_USERNAME/$IMAGE_NAME
   deploy:
     needs: buildImage
     name: Deploy App in AKS
